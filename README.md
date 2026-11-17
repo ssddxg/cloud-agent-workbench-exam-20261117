@@ -6,7 +6,7 @@
 
 ![真实 Docker 应用界面](evidence/screenshots/03-real-cli-result.png)
 
-本次交付已完成真实验证：**22 项自动测试通过**；[Docker 构建、真实 CLI 执行及浏览器检查通过](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44103494272)。两类任务各自完成后续修改，费用工具实际结果为总额 **280**、交通过滤 **50**。运行记录、产物和截图见 [验证证据](evidence/README.md)。
+本次交付已完成真实验证：**22 项自动测试通过**；[Docker 构建、真实 CLI 执行及浏览器检查通过](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44104352812)。两类任务各自完成后续修改，费用工具实际结果为总额 **280**、交通过滤 **50**。运行记录、产物和截图见 [验证证据](evidence/README.md)。
 
 后端和前端均无 npm 应用依赖。Agent 的命令执行、文件修改与对话恢复由 Codex CLI 完成，工作台负责会话、调度、持久化、浏览器交互和模型协议适配。应用并非仅调用模型后展示聊天文本。
 
