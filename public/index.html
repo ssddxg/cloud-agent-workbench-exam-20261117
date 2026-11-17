@@ -1,36 +1,199 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f4ef">
-  <title>云栖 · Agent 工作台</title>
-  <link rel="stylesheet" href="/app.css">
-  <script defer src="/app.js"></script>
-</head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar" aria-label="工作会话">
-      <a class="brand" href="/" aria-label="云栖工作台首页"><span class="brand-mark">云</span><span>云栖<span class="brand-sub">AGENT WORKSPACE</span></span></a>
-      <button class="new-session" id="new-session"><span class="icon" data-icon="plus"></span>新建工作<span class="shortcut">＋</span></button>
-      <div class="sidebar-label">我的工作<span id="session-count">0</span></div>
-      <nav id="sessions" class="sessions" aria-label="会话列表"></nav>
-      <div class="sidebar-bottom"><div class="local-badge"><span class="status-dot"></span>单用户 · 本地工作空间</div><p>每一次对话，都可以继续。</p><div class="profile"><span class="avatar">我</span><div><strong>我的工作台</strong><small>持久保存 · 随时回来</small></div><span class="profile-dots">···</span></div></div>
-    </aside>
-    <div class="main-shell">
-      <header class="topbar"><div class="topbar-title"><button class="icon-button mobile-menu" id="menu-toggle" aria-label="打开会话列表"><span data-icon="menu" class="icon"></span></button><span class="breadcrumb">工作空间</span><span class="slash">/</span><h1 id="session-title">新的开始</h1><button class="icon-button" id="rename-session" title="重命名工作" aria-label="重命名工作"><span class="icon" data-icon="edit"></span></button></div><div class="topbar-actions"><span class="connection" id="connection"><i></i><span>连接中</span></span><button class="icon-button" id="export-session" title="导出会话" aria-label="导出当前会话"><span class="icon" data-icon="download"></span></button><button class="icon-button" id="files-toggle" aria-label="显示文件与成果"><span class="icon" data-icon="panel"></span></button></div></header>
-      <div id="config-banner" class="config-banner" hidden></div>
-      <div class="workspace-grid">
-        <main class="conversation" id="conversation" aria-label="与助手交流">
-          <div class="chat-scroll" id="chat-scroll"><div class="chat-content" id="chat-content"></div></div>
-          <div class="composer-area"><div class="upload-progress" id="upload-progress" hidden></div><form class="composer" id="composer"><label class="sr-only" for="prompt">告诉助手你想完成什么</label><textarea id="prompt" rows="2" placeholder="告诉我你想完成什么，或上传文件开始工作…" maxlength="30000"></textarea><div class="composer-controls"><div class="composer-left"><button type="button" class="attach-button" id="upload-button" title="上传材料" aria-label="上传工作材料"><span class="icon" data-icon="paperclip"></span><span>添加材料</span></button><span class="composer-model"><span class="model-symbol">✧</span>Codex Agent</span></div><button type="button" class="stop-button" id="stop-run" hidden><span class="stop-square"></span>停止</button><button class="send-button" id="send" type="submit" aria-label="发送消息"><span class="icon" data-icon="arrow-up"></span></button></div></form><div class="composer-hint"><span><span class="tiny-dot"></span>对话与文件自动保存</span><span>Enter 发送 · Shift + Enter 换行</span></div></div>
-        </main>
-        <aside class="artifacts" id="artifacts" aria-label="文件与成果"><div class="panel-header"><div><span class="eyebrow">WORKSPACE</span><h2>文件与成果 <span id="file-count">0</span></h2></div><button class="icon-button" id="refresh-files" title="刷新文件" aria-label="刷新文件"><span class="icon" data-icon="refresh"></span></button></div><div class="artifact-note"><span class="icon" data-icon="folder"></span><p>材料与成果，<br>都留在这次工作里。</p></div><div id="files" class="file-list"></div><button class="upload-zone" id="upload-zone"><span class="icon" data-icon="upload"></span><strong>点击或拖入工作材料</strong><small>单个文件不超过 10 MB</small></button><section class="run-panel"><div class="panel-section-title">执行动态<span id="run-indicator" class="run-indicator">等待任务</span></div><div id="run-summary" class="run-summary"><span class="icon" data-icon="spark"></span><p>交给助手一项任务，<br>这里将显示它的行动过程。</p></div><div id="run-traces" class="run-traces"></div></section><div class="panel-footer"><span class="icon" data-icon="shield"></span>凭据仅保留在服务端</div></aside>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f4ef" />
+    <title>云栖 · Agent 工作台</title>
+    <link rel="stylesheet" href="/app.css" />
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="工作会话">
+        <a class="brand" href="/" aria-label="云栖工作台首页"
+          ><span class="brand-mark">云</span
+          ><span>云栖<span class="brand-sub">AGENT WORKSPACE</span></span></a
+        >
+        <button class="new-session" id="new-session">
+          <span class="icon" data-icon="plus"></span>新建工作<span
+            class="shortcut"
+            >＋</span
+          >
+        </button>
+        <div class="sidebar-label">
+          我的工作<span id="session-count">0</span>
+        </div>
+        <nav id="sessions" class="sessions" aria-label="会话列表"></nav>
+        <div class="sidebar-bottom">
+          <div class="local-badge">
+            <span class="status-dot"></span>单用户 · 本地工作空间
+          </div>
+          <p>每一次对话，都可以继续。</p>
+          <div class="profile">
+            <span class="avatar">我</span>
+            <div>
+              <strong>我的工作台</strong><small>持久保存 · 随时回来</small>
+            </div>
+            <span class="profile-dots">···</span>
+          </div>
+        </div>
+      </aside>
+      <div class="main-shell">
+        <header class="topbar">
+          <div class="topbar-title">
+            <button
+              class="icon-button mobile-menu"
+              id="menu-toggle"
+              aria-label="打开会话列表"
+            >
+              <span data-icon="menu" class="icon"></span></button
+            ><span class="breadcrumb">工作空间</span
+            ><span class="slash">/</span>
+            <h1 id="session-title">新的开始</h1>
+            <button
+              class="icon-button"
+              id="rename-session"
+              title="重命名工作"
+              aria-label="重命名工作"
+            >
+              <span class="icon" data-icon="edit"></span>
+            </button>
+          </div>
+          <div class="topbar-actions">
+            <span class="connection" id="connection"
+              ><i></i><span>连接中</span></span
+            ><button
+              class="icon-button"
+              id="export-session"
+              title="导出会话"
+              aria-label="导出当前会话"
+            >
+              <span class="icon" data-icon="download"></span></button
+            ><button
+              class="icon-button"
+              id="files-toggle"
+              aria-label="显示文件与成果"
+            >
+              <span class="icon" data-icon="panel"></span>
+            </button>
+          </div>
+        </header>
+        <div id="config-banner" class="config-banner" hidden></div>
+        <div class="workspace-grid">
+          <main class="conversation" id="conversation" aria-label="与助手交流">
+            <div class="chat-scroll" id="chat-scroll">
+              <div class="chat-content" id="chat-content"></div>
+            </div>
+            <div class="composer-area">
+              <div class="upload-progress" id="upload-progress" hidden></div>
+              <form class="composer" id="composer">
+                <label class="sr-only" for="prompt">告诉助手你想完成什么</label
+                ><textarea
+                  id="prompt"
+                  rows="2"
+                  placeholder="告诉我你想完成什么，或上传文件开始工作…"
+                  maxlength="30000"
+                ></textarea>
+                <div class="composer-controls">
+                  <div class="composer-left">
+                    <button
+                      type="button"
+                      class="attach-button"
+                      id="upload-button"
+                      title="上传材料"
+                      aria-label="上传工作材料"
+                    >
+                      <span class="icon" data-icon="paperclip"></span
+                      ><span>添加材料</span></button
+                    ><span class="composer-model"
+                      ><span class="model-symbol">✧</span>Codex Agent</span
+                    >
+                  </div>
+                  <button
+                    type="button"
+                    class="stop-button"
+                    id="stop-run"
+                    hidden
+                  >
+                    <span class="stop-square"></span>停止</button
+                  ><button
+                    class="send-button"
+                    id="send"
+                    type="submit"
+                    aria-label="发送消息"
+                  >
+                    <span class="icon" data-icon="arrow-up"></span>
+                  </button>
+                </div>
+              </form>
+              <div class="composer-hint">
+                <span><span class="tiny-dot"></span>对话与文件自动保存</span
+                ><span>Enter 发送 · Shift + Enter 换行</span>
+              </div>
+            </div>
+          </main>
+          <aside class="artifacts" id="artifacts" aria-label="文件与成果">
+            <div class="panel-header">
+              <div>
+                <span class="eyebrow">WORKSPACE</span>
+                <h2>文件与成果 <span id="file-count">0</span></h2>
+              </div>
+              <button
+                class="icon-button"
+                id="refresh-files"
+                title="刷新文件"
+                aria-label="刷新文件"
+              >
+                <span class="icon" data-icon="refresh"></span>
+              </button>
+            </div>
+            <div class="artifact-note">
+              <span class="icon" data-icon="folder"></span>
+              <p>材料与成果，<br />都留在这次工作里。</p>
+            </div>
+            <div id="files" class="file-list"></div>
+            <button class="upload-zone" id="upload-zone">
+              <span class="icon" data-icon="upload"></span
+              ><strong>点击或拖入工作材料</strong
+              ><small>单个文件不超过 10 MB</small>
+            </button>
+            <section class="run-panel">
+              <div class="panel-section-title">
+                执行动态<span id="run-indicator" class="run-indicator"
+                  >等待任务</span
+                >
+              </div>
+              <div id="run-summary" class="run-summary">
+                <span class="icon" data-icon="spark"></span>
+                <p>交给助手一项任务，<br />这里将显示它的行动过程。</p>
+              </div>
+              <div id="run-traces" class="run-traces"></div>
+            </section>
+            <div class="panel-footer">
+              <span class="icon" data-icon="shield"></span>凭据仅保留在服务端
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
-  </div>
-  <input id="file-input" type="file" multiple hidden>
-  <dialog id="preview-dialog"><div class="preview-head"><div><span class="eyebrow">文件预览</span><h2 id="preview-name"></h2></div><div><a id="preview-download" class="text-button" download>下载文件<span class="icon" data-icon="download"></span></a><button class="icon-button" id="close-preview" aria-label="关闭预览"><span class="icon" data-icon="close"></span></button></div></div><pre id="preview-content"></pre></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-</body>
+    <input id="file-input" type="file" multiple hidden />
+    <dialog id="preview-dialog">
+      <div class="preview-head">
+        <div>
+          <span class="eyebrow">文件预览</span>
+          <h2 id="preview-name"></h2>
+        </div>
+        <div>
+          <a id="preview-download" class="text-button" download
+            >下载文件<span class="icon" data-icon="download"></span></a
+          ><button class="icon-button" id="close-preview" aria-label="关闭预览">
+            <span class="icon" data-icon="close"></span>
+          </button>
+        </div>
+      </div>
+      <pre id="preview-content"></pre>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
 </html>

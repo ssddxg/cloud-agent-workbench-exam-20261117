@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Clear previous generated CI evidence
+        run: node -e "const fs=require('fs');for(const p of ['evidence/docker-smoke.json','evidence/browser-verification.json','evidence/screenshots'])fs.rmSync(p,{recursive:true,force:true})"
       - name: Deterministic unit and integration tests
         run: npm test
       - name: Build the actual Docker image
@@ -36,8 +38,13 @@ jobs:
           done
           curl --fail http://127.0.0.1:3210/
       - name: Real Agent CLI in Docker smoke test (when secret configured)
-        if: env.AGENT_API_KEY != ''
+        if: env.AGENT_API_KEY != '' && github.event_name == 'workflow_dispatch'
         run: node demo/docker-smoke.js
+      - name: Browser interaction checks and screenshots
+        run: |
+          npm install --prefix /tmp/workbench-browser --no-save --no-package-lock playwright-core@1.56.1
+          if ! fc-list :lang=zh | grep -q .; then sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk; fi
+          PLAYWRIGHT_MODULE=/tmp/workbench-browser/node_modules/playwright-core/index.mjs node demo/browser-check.mjs
       - name: Container logs
         if: always()
         run: docker logs workbench || true
@@ -46,5 +53,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-verification
-          path: evidence/docker-smoke.json
+          path: |
+            evidence/docker-smoke.json
+            evidence/browser-verification.json
+            evidence/screenshots/
           if-no-files-found: ignore
