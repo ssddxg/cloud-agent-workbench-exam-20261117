@@ -1,0 +1,50 @@
+name: Verify application and Docker
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}
+      AGENT_BASE_URL: ${{ vars.AGENT_BASE_URL || 'https://api.openai.com/v1' }}
+      AGENT_MODEL: ${{ vars.AGENT_MODEL || 'gpt-5.1-codex-mini' }}
+      AGENT_PROTOCOL: ${{ vars.AGENT_PROTOCOL || 'chat' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deterministic unit and integration tests
+        run: npm test
+      - name: Build the actual Docker image
+        run: docker build --tag cloud-agent-workbench:verify .
+      - name: Verify pinned real CLI
+        run: docker run --rm cloud-agent-workbench:verify codex --version
+      - name: Start application in Docker
+        run: |
+          docker run -d --name workbench --init -p 127.0.0.1:3210:3210 \
+            -e AGENT_API_KEY -e AGENT_BASE_URL -e AGENT_MODEL -e AGENT_PROTOCOL \
+            cloud-agent-workbench:verify
+          for i in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:3210/api/health; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:3210/
+      - name: Real Agent CLI in Docker smoke test (when secret configured)
+        if: env.AGENT_API_KEY != ''
+        run: node demo/docker-smoke.js
+      - name: Container logs
+        if: always()
+        run: docker logs workbench || true
+      - name: Upload reproducible evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-verification
+          path: evidence/docker-smoke.json
+          if-no-files-found: ignore

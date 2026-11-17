@@ -1,0 +1,24 @@
+services:
+  workbench:
+    build: .
+    init: true
+    ports:
+      - "127.0.0.1:3210:3210"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3210
+      DATA_DIR: /app/data
+      CODEX_BIN: /usr/local/lib/node_modules/@openai/codex/bin/codex.js
+    volumes:
+      - workbench-data:/app/data
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  workbench-data:

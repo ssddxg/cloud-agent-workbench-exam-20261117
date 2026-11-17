@@ -1,0 +1,26 @@
+{
+  "source": "uploads\\expenses.csv",
+  "total": 280,
+  "recordCount": 5,
+  "categoryCount": 3,
+  "categories": [
+    {
+      "category": "办公",
+      "count": 1,
+      "total": 120,
+      "share": 42.86
+    },
+    {
+      "category": "餐饮",
+      "count": 2,
+      "total": 110,
+      "share": 39.29
+    },
+    {
+      "category": "交通",
+      "count": 2,
+      "total": 50,
+      "share": 17.86
+    }
+  ]
+}

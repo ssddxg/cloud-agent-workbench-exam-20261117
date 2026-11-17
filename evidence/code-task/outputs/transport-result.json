@@ -1,0 +1,17 @@
+{
+  "source": "uploads\\expenses.csv",
+  "total": 50,
+  "recordCount": 2,
+  "categoryCount": 1,
+  "categories": [
+    {
+      "category": "交通",
+      "count": 2,
+      "total": 50,
+      "share": 100
+    }
+  ],
+  "categoryFilter": [
+    "交通"
+  ]
+}
