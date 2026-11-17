@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-11-17T14:30:48.202Z",
+  "browser": "Headless Google Chrome in GitHub Actions",
+  "environment": "Docker application",
+  "checks": {
+    "render": true,
+    "newSession": true,
+    "rename": true,
+    "upload": true,
+    "safePreview": true,
+    "download": true,
+    "refreshRestore": true,
+    "multipleSessions": true,
+    "mobileLayout": true,
+    "realCliResultVisible": true,
+    "javaScriptErrors": []
+  },
+  "screenshots": [
+    "01-workspace.png",
+    "02-material-preview.png",
+    "03-real-cli-result.png",
+    "04-report-preview.png",
+    "05-mobile.png"
+  ]
+}

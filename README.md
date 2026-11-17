@@ -4,6 +4,10 @@
 
 把真实 **Codex CLI 0.157.1** 带到浏览器：创建工作会话，上传材料，观察工具执行，预览和下载成果，再通过后续消息继续同一项工作。单用户运行，无需把服务部署到公网。
 
+![真实 Docker 应用界面](evidence/screenshots/03-real-cli-result.png)
+
+本次交付已完成真实验证：**22 项自动测试通过**；[Docker 构建、真实 CLI 执行及浏览器检查通过](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44103494272)。两类任务各自完成后续修改，费用工具实际结果为总额 **280**、交通过滤 **50**。运行记录、产物和截图见 [验证证据](evidence/README.md)。
+
 后端和前端均无 npm 应用依赖。Agent 的命令执行、文件修改与对话恢复由 Codex CLI 完成，工作台负责会话、调度、持久化、浏览器交互和模型协议适配。应用并非仅调用模型后展示聊天文本。
 
 ## 快速启动：Docker
@@ -95,7 +99,7 @@ npm test
 
 测试覆盖存储恢复、路径和链接防护、协议工具调用转换，以及 HTTP、CLI 进程生命周期、排队取消、SSE、恢复与错误脱敏。部分集成测试使用可控的测试 CLI；实际 CLI 联调由上述演示和 CI 中可选的真实 Agent smoke test 单独证明。
 
-仓库工作流会运行测试、构建实际 Docker 镜像、校验固定 CLI 版本并启动容器。配置仓库 secret `AGENT_API_KEY` 和 variables `AGENT_BASE_URL`、`AGENT_MODEL`、`AGENT_PROTOCOL` 后，还会执行 `demo/docker-smoke.js` 并上传 `docker-verification` artifact。构建步骤不接收模型密钥，真实 Agent 运行时才注入环境变量。
+仓库工作流会运行测试、构建实际 Docker 镜像、校验固定 CLI 版本并启动容器，再通过真实 Chrome 验证上传、预览、下载、刷新恢复和移动布局。配置仓库 secret `AGENT_API_KEY` 和 variables `AGENT_BASE_URL`、`AGENT_MODEL`、`AGENT_PROTOCOL` 后，在 Actions 中手动运行工作流还会执行 `demo/docker-smoke.js`，使用真实 Agent 并上传 `docker-verification` artifact。普通 push 不调用模型，避免重复消耗额度。构建步骤不接收模型密钥，真实 Agent 运行时才注入环境变量。浏览器测试依赖只在 CI 临时目录安装，不是应用运行依赖。
 
 ## 现有环境快速运行
 

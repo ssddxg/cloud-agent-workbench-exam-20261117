@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const base = process.env.DEMO_URL || 'http://127.0.0.1:3210';
 const browser = await chromium.launch({ executablePath:process.env.CHROME_BIN || '/usr/bin/google-chrome', headless:true, args:['--no-sandbox'] });
-const context = await browser.newContext({ viewport:{width:1512,height:982}, deviceScaleFactor:1, locale:'zh-CN' });
+const context = await browser.newContext({ viewport:{width:1512,height:982}, deviceScaleFactor:1, locale:'zh-CN', reducedMotion:'reduce' });
 const page = await context.newPage();
 const errors=[];
 page.on('pageerror',e=>errors.push(e.message));
@@ -46,12 +46,13 @@ try {
     await page.locator('#close-preview').click();
   }
   await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.querySelector('#sidebar').getBoundingClientRect().right<=1);
   await page.screenshot({path:'evidence/screenshots/05-mobile.png',fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false,'Mobile layout must not overflow horizontally');
   await page.locator('#menu-toggle').click();
   assert.ok(await page.locator('#sidebar').evaluate(el=>el.classList.contains('open')));
   assert.deepEqual(errors,[],'Browser must not raise JavaScript errors');
-  const evidence={generatedAt:new Date().toISOString(),browser:'Headless Google Chrome in GitHub Actions',environment:'Docker application',checks:{render:true,newSession:true,rename:true,upload:true,safePreview:true,download:true,refreshRestore:true,multipleSessions:true,mobileLayout:true,realCliResultVisible:!!real,javaScriptErrors:errors},screenshots:['01-workspace.png','02-material-preview.png','03-real-cli-result.png','04-report-preview.png','05-mobile.png']};
+  const evidence={generatedAt:new Date().toISOString(),browser:'Headless Google Chrome in GitHub Actions',environment:'Docker application',checks:{render:true,newSession:true,rename:true,upload:true,safePreview:true,download:true,refreshRestore:true,multipleSessions:true,mobileLayout:true,realCliResultVisible:!!real,javaScriptErrors:errors},screenshots:['01-workspace.png','02-material-preview.png',...(real?['03-real-cli-result.png','04-report-preview.png']:[]),'05-mobile.png']};
   await fs.writeFile('evidence/browser-verification.json',JSON.stringify(evidence,null,2));
   console.log(JSON.stringify(evidence,null,2));
 } finally {await browser.close();}
