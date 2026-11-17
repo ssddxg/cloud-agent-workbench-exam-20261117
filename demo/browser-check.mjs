@@ -91,7 +91,7 @@ try {
         .querySelector(
           `.session-row[data-session-id="${id}"] [data-action="pin"]`,
         )
-        ?.getAttribute("aria-label") === "取消置顶",
+        ?.getAttribute("aria-label") === "取消置顶：浏览器验证 · 材料工作",
     material.id,
   );
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -104,7 +104,7 @@ try {
     await materialRow()
       .locator('[data-action="pin"]')
       .getAttribute("aria-label"),
-    "取消置顶",
+    "取消置顶：浏览器验证 · 材料工作",
   );
   await page.locator("#session-search").fill("浏览器验证");
   assert.equal(await page.locator(".session-row").count(), 1);
@@ -114,6 +114,9 @@ try {
   await materialRow().hover();
   await materialRow().locator('[data-action="archive"]').click();
   await materialRow().waitFor({ state: "detached" });
+  await page.waitForFunction(() =>
+    document.querySelector("#toast").textContent.startsWith("工作已归档"),
+  );
   await page.locator("#scope-archived").click();
   await materialRow().locator(".session-item").click();
   await page.locator("#archive-banner").waitFor({ state: "visible" });
@@ -263,6 +266,12 @@ try {
     JSON.stringify(evidence, null, 2),
   );
   console.log(JSON.stringify(evidence, null, 2));
+} catch (error) {
+  await page.screenshot({
+    path: "evidence/screenshots/browser-failure.png",
+    fullPage: true,
+  }).catch(() => {});
+  throw error;
 } finally {
   await browser.close();
 }
