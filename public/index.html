@@ -21,6 +21,20 @@
             >＋</span
           >
         </button>
+        <label class="session-search"
+          ><span class="icon" data-icon="search"></span
+          ><input
+            id="session-search"
+            type="search"
+            placeholder="搜索工作"
+            aria-label="搜索会话"
+            autocomplete="off"
+        /></label>
+        <div class="session-scopes" aria-label="会话范围">
+          <button id="scope-active" class="active" aria-pressed="true">
+            工作列表</button
+          ><button id="scope-archived" aria-pressed="false">已归档</button>
+        </div>
         <div class="sidebar-label">
           我的工作<span id="session-count">0</span>
         </div>
@@ -65,6 +79,13 @@
               ><i></i><span>连接中</span></span
             ><button
               class="icon-button"
+              id="show-history"
+              title="执行记录"
+              aria-label="查看执行记录"
+            >
+              <span class="icon" data-icon="clock"></span></button
+            ><button
+              class="icon-button"
               id="export-session"
               title="导出会话"
               aria-label="导出当前会话"
@@ -80,6 +101,10 @@
           </div>
         </header>
         <div id="config-banner" class="config-banner" hidden></div>
+        <div id="archive-banner" class="archive-banner" hidden>
+          <span>此工作已归档，消息与成果仍可查看。</span
+          ><button id="restore-session" type="button">恢复工作</button>
+        </div>
         <div class="workspace-grid">
           <main class="conversation" id="conversation" aria-label="与助手交流">
             <div class="chat-scroll" id="chat-scroll">
@@ -139,14 +164,24 @@
                 <span class="eyebrow">WORKSPACE</span>
                 <h2>文件与成果 <span id="file-count">0</span></h2>
               </div>
-              <button
-                class="icon-button"
-                id="refresh-files"
-                title="刷新文件"
-                aria-label="刷新文件"
-              >
-                <span class="icon" data-icon="refresh"></span>
-              </button>
+              <div class="panel-header-actions">
+                <button
+                  class="icon-button"
+                  id="download-artifacts"
+                  title="打包下载成果 ZIP"
+                  aria-label="打包下载成果 ZIP"
+                  disabled
+                >
+                  <span class="icon" data-icon="package"></span></button
+                ><button
+                  class="icon-button"
+                  id="refresh-files"
+                  title="刷新文件"
+                  aria-label="刷新文件"
+                >
+                  <span class="icon" data-icon="refresh"></span>
+                </button>
+              </div>
             </div>
             <div class="artifact-note">
               <span class="icon" data-icon="folder"></span>
@@ -193,6 +228,30 @@
         </div>
       </div>
       <pre id="preview-content"></pre>
+    </dialog>
+    <dialog id="history-dialog" aria-labelledby="history-title">
+      <div class="preview-head">
+        <div>
+          <span class="eyebrow">RUN HISTORY</span>
+          <h2 id="history-title">执行记录</h2>
+        </div>
+        <div>
+          <button class="text-button" id="history-export-markdown">
+            导出对话 Markdown
+          </button>
+          <button
+            class="icon-button"
+            id="close-history"
+            aria-label="关闭执行记录"
+          >
+            <span class="icon" data-icon="close"></span>
+          </button>
+        </div>
+      </div>
+      <div class="history-layout">
+        <nav id="history-runs" aria-label="历史执行"></nav>
+        <section id="history-detail" aria-label="执行详情"></section>
+      </div>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>

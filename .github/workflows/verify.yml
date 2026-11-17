@@ -27,11 +27,16 @@ jobs:
         run: docker build --tag cloud-agent-workbench:verify .
       - name: Verify pinned real CLI
         run: docker run --rm cloud-agent-workbench:verify codex --version
+      - name: Prepare offline browser fixture from verified prior results
+        run: node demo/prepare-browser-data.mjs
       - name: Start application in Docker
         run: |
-          docker run -d --name workbench --init -p 127.0.0.1:3210:3210 \
+          docker create --name workbench --init -p 127.0.0.1:3210:3210 \
             -e AGENT_API_KEY -e AGENT_BASE_URL -e AGENT_MODEL -e AGENT_PROTOCOL \
             cloud-agent-workbench:verify
+          docker cp work/browser-data/. workbench:/app/data/
+          docker start workbench
+          docker exec --user 0 workbench chown -R node:node /app/data
           for i in $(seq 1 40); do
             if curl --fail --silent http://127.0.0.1:3210/api/health; then break; fi
             sleep 1

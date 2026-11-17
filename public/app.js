@@ -29,6 +29,12 @@
     check: '<path d="m5 12 4 4L19 6"/>',
     terminal: '<path d="m4 6 6 6-6 6m9 0h7"/>',
     alert: '<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 3h.01"/>',
+    search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+    pin: '<path d="m8 3 8 0-1 6 4 4v2h-6v7h-2v-7H5v-2l4-4-1-6Z"/>',
+    archive: '<path d="M3 4h18v4H3zM5 8v12h14V8M9 12h6"/>',
+    restore: '<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/>',
+    package:
+      '<path d="m12 2 9 5v10l-9 5-9-5V7l9-5ZM3 7l9 5 9-5M12 12v10M7 4.8l10 5.5"/>',
   };
   function icon(name) {
     const span = document.createElement("span");
@@ -52,9 +58,14 @@
     refreshTimer: null,
     toastTimer: null,
     draft: new Map(),
+    scope: "active",
+    files: [],
+    historyRun: null,
+    metadataPending: new Set(),
   };
   const busy = () =>
     ["running", "queued", "cancelling"].includes(state.session?.status);
+  const archived = () => !!state.session?.archived;
   const labels = {
     idle: "待开始",
     running: "正在执行",
@@ -127,12 +138,46 @@
   function renderSessions() {
     const list = $("sessions");
     list.replaceChildren();
-    $("session-count").textContent = state.sessions.length;
-    if (!state.sessions.length)
-      list.append(
-        text("div", "还没有工作。\n从一个想法开始吧。", "sidebar-empty"),
+    $("session-count").textContent = state.sessions.filter(
+      (s) => !s.archived,
+    ).length;
+    $("scope-active").classList.toggle("active", state.scope === "active");
+    $("scope-archived").classList.toggle("active", state.scope === "archived");
+    $("scope-active").setAttribute(
+      "aria-pressed",
+      String(state.scope === "active"),
+    );
+    $("scope-archived").setAttribute(
+      "aria-pressed",
+      String(state.scope === "archived"),
+    );
+    const query = $("session-search").value.trim().toLocaleLowerCase();
+    const sessions = state.sessions
+      .filter(
+        (s) =>
+          !!s.archived === (state.scope === "archived") &&
+          (!query || s.title.toLocaleLowerCase().includes(query)),
+      )
+      .sort(
+        (a, b) =>
+          Number(!!b.pinned) - Number(!!a.pinned) ||
+          b.updatedAt.localeCompare(a.updatedAt),
       );
-    for (const session of state.sessions) {
+    if (!sessions.length)
+      list.append(
+        text(
+          "div",
+          query
+            ? "没有找到匹配的工作。"
+            : state.scope === "archived"
+              ? "归档后的工作会保留在这里。"
+              : "还没有工作。\n从一个想法开始吧。",
+          "sidebar-empty",
+        ),
+      );
+    for (const session of sessions) {
+      const row = text("div", "", "session-row");
+      row.dataset.sessionId = session.id;
       const button = document.createElement("button");
       const running = ["running", "queued", "cancelling"].includes(
         session.status,
@@ -145,7 +190,7 @@
         "aria-current",
         session.id === state.id ? "page" : "false",
       );
-      button.append(icon("chat"));
+      button.append(icon(session.pinned ? "pin" : "chat"));
       const copy = text("span", "", "session-copy");
       copy.append(text("strong", session.title));
       const small = text("small", "");
@@ -158,8 +203,109 @@
       copy.append(small);
       button.append(copy);
       button.onclick = () => selectSession(session.id);
-      list.append(button);
+      const actions = text("div", "", "session-actions");
+      for (const action of [
+        {
+          name: "pin",
+          label: session.pinned ? "取消置顶" : "置顶工作",
+          icon: "pin",
+          update: { pinned: !session.pinned },
+        },
+        {
+          name: "archive",
+          label: session.archived ? "恢复工作" : "归档工作",
+          icon: session.archived ? "restore" : "archive",
+          update: { archived: !session.archived },
+        },
+      ]) {
+        const control = text(
+          "button",
+          "",
+          "session-action" +
+            (action.name === "pin" && session.pinned ? " selected" : ""),
+        );
+        control.type = "button";
+        control.dataset.action = action.name;
+        control.title = action.label;
+        control.setAttribute("aria-label", action.label + "：" + session.title);
+        control.disabled =
+          state.metadataPending.has(session.id) ||
+          (action.name === "archive" && running);
+        control.append(icon(action.icon));
+        control.onclick = () =>
+          updateSessionMetadata(session.id, action.update);
+        actions.append(control);
+      }
+      row.append(button, actions);
+      list.append(row);
     }
+  }
+  async function updateSessionMetadata(id, update) {
+    if (state.metadataPending.has(id)) return;
+    state.metadataPending.add(id);
+    renderSessions();
+    const selection = state.selection;
+    try {
+      const session = await api(`/api/sessions/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(update),
+      });
+      await refreshSessions();
+      if (state.id === id && state.selection === selection) {
+        if (update.archived === true) {
+          const next = state.sessions
+            .filter((s) => !s.archived)
+            .sort(
+              (a, b) =>
+                Number(!!b.pinned) - Number(!!a.pinned) ||
+                b.updatedAt.localeCompare(a.updatedAt),
+            )[0];
+          state.scope = "active";
+          if (next) await selectSession(next.id);
+          else clearSelection();
+        } else {
+          state.session = session;
+          if (update.archived === false) state.scope = "active";
+          renderSessions();
+          renderConversation();
+        }
+      }
+      toast(
+        update.archived === true
+          ? "工作已归档，消息和成果仍会保留。"
+          : update.archived === false
+            ? "工作已恢复，可以继续交流。"
+            : update.pinned
+              ? "工作已置顶。"
+              : "已取消置顶。",
+      );
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      state.metadataPending.delete(id);
+      renderSessions();
+    }
+  }
+  function clearSelection() {
+    if (state.id) state.draft.set(state.id, $("prompt").value);
+    state.source?.close();
+    state.source = null;
+    clearTimeout(state.refreshTimer);
+    state.refreshTimer = null;
+    state.id = null;
+    state.session = null;
+    state.events.clear();
+    state.selection++;
+    $("prompt").value = "";
+    try {
+      localStorage.removeItem("cloud-agent-session");
+    } catch {}
+    $("history-dialog").close();
+    $("preview-dialog").close();
+    renderSessions();
+    renderConversation();
+    renderFiles([]);
+    resizePrompt();
   }
   async function refreshSessions() {
     const list = await api("/api/sessions");
@@ -402,10 +548,14 @@
     $("session-title").textContent = state.session?.title || "新的开始";
     $("rename-session").hidden = !state.id;
     $("export-session").disabled = !state.id;
+    $("show-history").disabled = !state.id || !state.session?.runs?.length;
+    $("archive-banner").hidden = !archived();
+    $("restore-session").disabled = state.metadataPending.has(state.id);
     $("stop-run").hidden = !busy();
     $("stop-run").disabled = state.session?.status === "cancelling";
     syncControls();
     renderTraces();
+    if ($("history-dialog").open) renderHistory();
     if (nearBottom) scroll.scrollTop = scroll.scrollHeight;
   }
   function eventItem(e) {
@@ -530,6 +680,12 @@
     state.refreshTimer = null;
     state.id = id;
     state.session = null;
+    state.historyRun = null;
+    state.scope = state.sessions.find((s) => s.id === id)?.archived
+      ? "archived"
+      : "active";
+    $("history-dialog").close();
+    $("preview-dialog").close();
     state.events.clear();
     const token = ++state.selection;
     try {
@@ -548,6 +704,8 @@
       ]);
       if (token !== state.selection) return;
       state.session = session;
+      state.scope = session.archived ? "archived" : "active";
+      renderSessions();
       for (const e of Array.isArray(events) ? events : events.events || [])
         state.events.set(e.id, e);
       renderConversation();
@@ -602,6 +760,8 @@
     );
   }
   function renderFiles(files) {
+    state.files = files;
+    syncArtifactDownload();
     $("file-count").textContent = files.length;
     const list = $("files");
     list.replaceChildren();
@@ -670,6 +830,8 @@
     }
   }
   async function newSession(title) {
+    state.scope = "active";
+    $("session-search").value = "";
     const session = await api("/api/sessions", {
       method: "POST",
       body: JSON.stringify({ title: title || "新的工作" }),
@@ -680,13 +842,223 @@
   }
   function syncControls() {
     $("send").hidden = busy();
-    $("send").disabled = state.loading || state.uploading;
-    $("upload-button").disabled = busy() || state.uploading || state.loading;
-    $("upload-zone").disabled = busy() || state.uploading || state.loading;
+    $("send").disabled = archived() || state.loading || state.uploading;
+    $("prompt").disabled = archived();
+    $("prompt").placeholder = archived()
+      ? "此工作已归档，恢复后可以继续交流。"
+      : "告诉我你想完成什么，或上传文件开始工作…";
+    $("upload-button").disabled =
+      archived() || busy() || state.uploading || state.loading;
+    $("upload-zone").disabled =
+      archived() || busy() || state.uploading || state.loading;
+    syncArtifactDownload();
+  }
+  function syncArtifactDownload() {
+    $("download-artifacts").disabled =
+      !state.id ||
+      busy() ||
+      !state.files.some((file) => file.path.startsWith("outputs/"));
+  }
+  async function downloadArtifacts() {
+    const id = state.id;
+    if (!id || busy()) return;
+    $("download-artifacts").disabled = true;
+    try {
+      const response = await fetch(
+        `/api/sessions/${encodeURIComponent(id)}/artifacts.zip`,
+      );
+      if (!response.ok) {
+        let error;
+        try {
+          error = await response.json();
+        } catch {}
+        throw new Error(error?.error || "成果打包失败，请重试。");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `artifacts-${id.slice(0, 8)}.zip`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      if (state.id === id) syncArtifactDownload();
+    }
+  }
+  function dateTime(iso) {
+    return iso
+      ? new Date(iso).toLocaleString("zh-CN", { hour12: false })
+      : "尚未开始";
+  }
+  function runDuration(run) {
+    if (!run.startedAt) return "等待执行";
+    const seconds = Math.max(
+      0,
+      Math.round(
+        (new Date(run.finishedAt || Date.now()) - new Date(run.startedAt)) /
+          1000,
+      ),
+    );
+    return seconds >= 60
+      ? `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`
+      : `${seconds} 秒`;
+  }
+  function renderHistory() {
+    const runs = state.session?.runs || [];
+    const nav = $("history-runs"),
+      detail = $("history-detail");
+    const open = new Set(
+      [...detail.querySelectorAll("details[open]")].map((el) => el.dataset.key),
+    );
+    nav.replaceChildren();
+    detail.replaceChildren();
+    if (!runs.length) {
+      detail.append(text("p", "此工作还没有执行记录。", "history-empty"));
+      return;
+    }
+    if (!runs.some((run) => run.id === state.historyRun))
+      state.historyRun = runs.at(-1).id;
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const run = runs[i],
+        button = text(
+          "button",
+          "",
+          "history-run" + (run.id === state.historyRun ? " active" : ""),
+        );
+      button.dataset.runId = run.id;
+      button.setAttribute("aria-pressed", String(run.id === state.historyRun));
+      button.append(
+        text("strong", `第 ${i + 1} 次执行`),
+        text("span", labels[run.status] || run.status, "history-status"),
+        text(
+          "small",
+          `${dateTime(run.startedAt || run.queuedAt)} · ${runDuration(run)}`,
+        ),
+      );
+      button.onclick = () => {
+        state.historyRun = run.id;
+        renderHistory();
+      };
+      nav.append(button);
+    }
+    const run = runs.find((r) => r.id === state.historyRun);
+    detail.append(
+      text(
+        "h3",
+        `第 ${runs.indexOf(run) + 1} 次执行 · ${labels[run.status] || run.status}`,
+      ),
+      text(
+        "p",
+        `${dateTime(run.startedAt || run.queuedAt)} · ${runDuration(run)}`,
+        "history-meta",
+      ),
+    );
+    if (run.summary) detail.append(text("p", run.summary, "history-summary"));
+    if (run.usage) {
+      const usage = text("div", "", "history-usage");
+      usage.append(text("strong", "CLI 报告用量"));
+      const values = [
+        ["输入", run.usage.input_tokens],
+        ["输出", run.usage.output_tokens],
+        ["缓存输入", run.usage.cached_input_tokens],
+      ];
+      for (const [label, value] of values)
+        if (Number.isFinite(value))
+          usage.append(
+            text("span", `${label} ${value.toLocaleString("zh-CN")} tokens`),
+          );
+      detail.append(
+        usage,
+        text(
+          "p",
+          "用量由 CLI 返回，用于复查执行，不作为计费账单。",
+          "history-note",
+        ),
+      );
+    }
+    const events = [...state.events.values()].filter(
+      (e) => e.runId === run.id && e.type === "agent",
+    );
+    const items = new Map();
+    for (const e of events) {
+      const item = eventItem(e);
+      if (
+        [
+          "command_execution",
+          "file_change",
+          "mcp_tool_call",
+          "web_search",
+          "error",
+        ].includes(item.type)
+      )
+        items.set(item.id || e.id, { event: e, item });
+    }
+    if (!items.size)
+      detail.append(text("p", "本次执行没有工具记录。", "history-empty"));
+    for (const { event: e, item } of items.values()) {
+      const title =
+        item.type === "file_change"
+          ? "文件更新 · " + (item.changes || []).map((c) => c.path).join("、")
+          : item.command || item.message || item.type;
+      const trace = text("details", "", "history-trace");
+      trace.dataset.key = e.id;
+      trace.open = open.has(e.id);
+      trace.append(
+        text("summary", String(title)),
+        text(
+          "small",
+          `${formatTime(e.at)}${item.exit_code !== undefined && item.exit_code !== null ? " · 退出码 " + item.exit_code : ""}`,
+        ),
+      );
+      const output =
+        item.aggregated_output ||
+        item.output ||
+        item.message ||
+        (item.changes ? JSON.stringify(item.changes, null, 2) : "");
+      trace.append(
+        text(
+          "pre",
+          typeof output === "string"
+            ? output.slice(-30000)
+            : JSON.stringify(output, null, 2),
+        ),
+      );
+      detail.append(trace);
+    }
+  }
+  async function openHistory() {
+    const id = state.id,
+      selection = state.selection;
+    if (!id) return;
+    state.historyRun = null;
+    renderHistory();
+    $("history-dialog").showModal();
+    try {
+      const [session, events] = await Promise.all([
+        api(`/api/sessions/${encodeURIComponent(id)}`),
+        api(`/api/sessions/${encodeURIComponent(id)}/events`),
+      ]);
+      if (
+        state.id !== id ||
+        state.selection !== selection ||
+        !$("history-dialog").open
+      )
+        return;
+      state.session = session;
+      for (const e of events)
+        if (!state.events.has(e.id)) state.events.set(e.id, e);
+      renderHistory();
+    } catch (error) {
+      if (state.id === id && state.selection === selection)
+        toast(error.message, true);
+    }
   }
   // Capture the destination before the first await. Navigation must never redirect
   // an in-flight message or the remaining files in a batch to another workspace.
   async function createOperationSession(title, sourceId, sourceSelection) {
+    state.scope = "active";
+    $("session-search").value = "";
     const session = await api("/api/sessions", {
       method: "POST",
       body: JSON.stringify({ title }),
@@ -708,7 +1080,8 @@
     event.preventDefault();
     const originalDraft = $("prompt").value;
     const content = originalDraft.trim();
-    if (!content || busy() || state.loading || state.uploading) return;
+    if (!content || archived() || busy() || state.loading || state.uploading)
+      return;
     const sourceId = state.id;
     const sourceSelection = state.selection;
     const sourceSession = state.session;
@@ -773,6 +1146,7 @@
   async function uploadFiles(fileList) {
     const files = [...fileList];
     if (!files.length || state.uploading || state.loading) return;
+    if (archived()) return toast("请先恢复此工作，再添加材料。", true);
     if (busy()) return toast("请等待当前执行结束后再添加材料。", true);
     if (files.some((file) => file.size > 10_000_000))
       return toast("单个文件不能超过 10 MB。", true);
@@ -852,6 +1226,31 @@
       Math.min(160, Math.max(48, $("prompt").scrollHeight)) + "px";
   }
   $("composer").onsubmit = sendMessage;
+  $("session-search").addEventListener("input", renderSessions);
+  $("scope-active").onclick = () => {
+    state.scope = "active";
+    renderSessions();
+  };
+  $("scope-archived").onclick = () => {
+    state.scope = "archived";
+    renderSessions();
+  };
+  $("restore-session").onclick = () => {
+    if (state.id) updateSessionMetadata(state.id, { archived: false });
+  };
+  $("download-artifacts").onclick = downloadArtifacts;
+  $("show-history").onclick = openHistory;
+  $("history-export-markdown").onclick = () => {
+    if (!state.id) return;
+    const link = document.createElement("a");
+    link.href = endpoint("/export") + "?format=markdown";
+    link.download = `session-${state.id}.md`;
+    link.click();
+  };
+  $("close-history").onclick = () => $("history-dialog").close();
+  $("history-dialog").onclick = (event) => {
+    if (event.target === $("history-dialog")) $("history-dialog").close();
+  };
   $("prompt").addEventListener("input", resizePrompt);
   $("prompt").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
@@ -943,7 +1342,10 @@
       } catch {}
       if (last && state.sessions.some((s) => s.id === last))
         await selectSession(last);
-      else if (state.sessions.length) await selectSession(state.sessions[0].id);
+      else {
+        const first = state.sessions.find((session) => !session.archived);
+        if (first) await selectSession(first.id);
+      }
     } catch (error) {
       toast(error.message, true);
     }
