@@ -6,7 +6,7 @@
 
 ![真实 Docker 应用界面](evidence/screenshots/03-real-cli-result.png)
 
-验证结果：**30 项自动测试通过**；[基础 Agent 流程的 Docker 构建、真实 CLI 执行及浏览器检查](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44104352812)已通过。两类任务各自完成后续修改，费用工具实际结果为总额 **280**、交通过滤 **50**。运行记录、产物和截图见 [验证证据](evidence/README.md)。
+验证结果：**30 项自动测试通过**；[基础 Agent 流程的 Docker 构建、真实 CLI 执行及浏览器检查](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44104352812)已通过。[增强功能的 Docker 与浏览器验证](https://github.com/ssddxg/cloud-agent-workbench-exam-20261117/actions/runs/44108687044)覆盖会话管理、执行历史和导出。两类任务各自完成后续修改，费用工具实际结果为总额 **280**、交通过滤 **50**。运行记录、产物和截图见 [验证证据](evidence/README.md)。
 
 后端和前端均无 npm 应用依赖。Agent 的命令执行、文件修改与对话恢复由 Codex CLI 完成，工作台负责会话、调度、持久化、浏览器交互和模型协议适配。应用并非仅调用模型后展示聊天文本。
 
@@ -106,7 +106,7 @@ npm test
 
 测试覆盖存储恢复、路径和链接防护、协议工具调用转换，以及 HTTP、CLI 进程生命周期、排队取消、SSE、恢复与错误脱敏。部分集成测试使用可控的测试 CLI；实际 CLI 联调由上述演示和 CI 中可选的真实 Agent smoke test 单独证明。
 
-仓库工作流会运行测试、构建实际 Docker 镜像、校验固定 CLI 版本并启动容器，再通过真实 Chrome 验证上传、预览、下载、刷新恢复和移动布局。配置仓库 secret `AGENT_API_KEY` 和 variables `AGENT_BASE_URL`、`AGENT_MODEL`、`AGENT_PROTOCOL` 后，在 Actions 中手动运行工作流还会执行 `demo/docker-smoke.js`，使用真实 Agent 并上传 `docker-verification` artifact。普通 push 不调用模型，避免重复消耗额度。构建步骤不接收模型密钥，真实 Agent 运行时才注入环境变量。浏览器测试依赖只在 CI 临时目录安装，不是应用运行依赖。
+仓库工作流会运行测试、构建实际 Docker 镜像、校验固定 CLI 版本并启动容器，再通过真实 Chrome 验证上传、预览、下载、刷新恢复、移动布局，以及搜索、置顶、归档恢复、执行历史、Markdown 导出和 ZIP 下载。增强功能检查载入此前真实任务的离线快照，不重复调用模型，也不将回放当作新的模型执行。配置仓库 secret `AGENT_API_KEY` 和 variables `AGENT_BASE_URL`、`AGENT_MODEL`、`AGENT_PROTOCOL` 后，在 Actions 中手动运行工作流还会执行 `demo/docker-smoke.js`，使用真实 Agent 并上传 `docker-verification` artifact。普通 push 不调用模型，避免重复消耗额度。构建步骤不接收模型密钥，真实 Agent 运行时才注入环境变量。浏览器测试依赖只在 CI 临时目录安装，不是应用运行依赖。
 
 ## 现有环境快速运行
 
